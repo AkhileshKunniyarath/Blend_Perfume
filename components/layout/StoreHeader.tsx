@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ArrowRight, ChevronDown, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { BlendLogo } from '@/components/brand/BlendLogo';
 import CartIcon from '@/components/ui/CartIcon';
 import { cn } from '@/lib/utils';
 import {
@@ -135,11 +136,13 @@ export default function StoreHeader({ categories }: { categories: NavCategory[] 
   return (
     <header className="sticky top-0 z-50 border-b border-white/45 bg-[rgba(245,241,234,0.82)] backdrop-blur-xl">
       <div className="section-shell flex min-h-18 items-center justify-between gap-4 py-4">
-        <Link href="/" className="min-w-fit" onClick={() => setMobileOpen(false)}>
-          <p className="font-display text-3xl text-[var(--deep-black)]">Blend</p>
-          <p className="-mt-1 text-[10px] uppercase tracking-[0.42em] text-[var(--foreground-soft)]">
-            Perfume House
-          </p>
+        <Link
+          href="/"
+          className="min-w-fit"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Blend Perfume home"
+        >
+          <BlendLogo className="w-24 sm:w-28" />
         </Link>
 
         <nav className="hidden items-center gap-2 md:flex">

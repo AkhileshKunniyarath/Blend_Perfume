@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import connectToDatabase from '@/lib/db';
 import Category from '@/models/Category';
+import { BlendLogo } from '@/components/brand/BlendLogo';
 import StoreHeader from '@/components/layout/StoreHeader';
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +40,7 @@ export default async function UserLayout({
       <footer className="mt-10 border-t border-white/45 bg-[linear-gradient(180deg,rgba(255,255,255,0.55),rgba(255,255,255,0.8))]">
         <div className="section-shell grid gap-10 py-14 lg:grid-cols-[1.1fr_0.7fr_0.7fr_1fr]">
           <div>
-            <p className="font-display text-4xl text-[var(--deep-black)]">Blend</p>
+            <BlendLogo className="w-48 max-w-full sm:w-56" />
             <p className="mt-4 max-w-sm text-sm leading-7 text-[var(--foreground-soft)]">
               Clean luxury fragrances with expressive storytelling, refined ingredients, and a premium ritual from first spray to dry down.
             </p>

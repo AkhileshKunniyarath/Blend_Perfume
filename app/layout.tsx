@@ -2,9 +2,24 @@ import type { Metadata } from "next";
 import { GoogleAnalytics, GoogleTagManager } from '@next/third-parties/google';
 import "./globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
 export const metadata: Metadata = {
+  metadataBase: siteUrl ? new URL(siteUrl) : undefined,
   title: "Blend Perfume",
   description: "Premium fragrances crafted with clean luxury, lasting depth, and modern perfume storytelling.",
+  applicationName: "Blend Perfume",
+  openGraph: {
+    type: "website",
+    siteName: "Blend Perfume",
+    title: "Blend Perfume",
+    description: "Premium fragrances crafted with clean luxury, lasting depth, and modern perfume storytelling.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Blend Perfume",
+    description: "Premium fragrances crafted with clean luxury, lasting depth, and modern perfume storytelling.",
+  },
 };
 
 export default function RootLayout({

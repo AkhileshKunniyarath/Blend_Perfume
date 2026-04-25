@@ -14,6 +14,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   await connectToDatabase();
   const { slug } = await params;
   const product = await Product.findOne({ slug }).lean();
+  const description =
+    product?.seoDescription ||
+    product?.description?.substring(0, 160) ||
+    'Discover premium fragrances from Blend Perfume.';
+  const productImage = product?.images?.[0];
 
   if (!product) {
     return { title: 'Product Not Found' };
@@ -21,11 +26,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   return {
     title: product.seoTitle || product.name,
-    description: product.seoDescription || product.description.substring(0, 160),
+    description,
     openGraph: {
       title: product.seoTitle || product.name,
-      description: product.seoDescription || product.description.substring(0, 160),
-      images: product.images?.[0] ? [{ url: product.images[0] }] : [],
+      description,
+      images: productImage ? [{ url: productImage }, { url: '/opengraph-image' }] : [{ url: '/opengraph-image' }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: product.seoTitle || product.name,
+      description,
+      images: productImage ? [productImage, '/twitter-image'] : ['/twitter-image'],
     },
   };
 }
