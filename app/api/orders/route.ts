@@ -2,25 +2,101 @@ import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Order from '@/models/Order';
 import { getRazorpayInstance } from '@/lib/razorpay';
+import {
+  createGuestTrackingToken,
+  normalizeEmail,
+  normalizePhone,
+} from '@/lib/order-utils';
+
+type CreateOrderRequest = {
+  userId?: string;
+  products?: Array<{
+    productId: string;
+    name: string;
+    price: number;
+    quantity: number;
+    size?: string;
+    image?: string;
+  }>;
+  address?: {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
+  totalAmount?: number;
+};
 
 export async function POST(req: Request) {
   try {
     await connectToDatabase();
-    const body = await req.json();
-    const { products, address, totalAmount } = body;
+    const body = (await req.json()) as CreateOrderRequest;
+    const { products, address, totalAmount, userId } = body;
 
-    if (!products || products.length === 0) {
+    if (!Array.isArray(products) || products.length === 0) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
     }
 
+    if (!address?.email || !address.phone) {
+      return NextResponse.json(
+        { error: 'Email address and mobile number are required to place an order.' },
+        { status: 400 }
+      );
+    }
+
+    if (
+      !address.fullName ||
+      !address.street ||
+      !address.city ||
+      !address.state ||
+      !address.zipCode ||
+      !address.country
+    ) {
+      return NextResponse.json({ error: 'Shipping address is incomplete.' }, { status: 400 });
+    }
+
+    if (typeof totalAmount !== 'number' || Number.isNaN(totalAmount) || totalAmount <= 0) {
+      return NextResponse.json({ error: 'Invalid order total.' }, { status: 400 });
+    }
+
+    const hasInvalidProduct = products.some(
+      (product) =>
+        !product.productId ||
+        !product.name ||
+        typeof product.price !== 'number' ||
+        typeof product.quantity !== 'number' ||
+        product.quantity <= 0
+    );
+
+    if (hasInvalidProduct) {
+      return NextResponse.json({ error: 'One or more cart items are invalid.' }, { status: 400 });
+    }
+
+    const normalizedEmail = normalizeEmail(address.email);
+    const normalizedPhone = normalizePhone(address.phone);
+
+    if (!normalizedPhone) {
+      return NextResponse.json({ error: 'A valid mobile number is required.' }, { status: 400 });
+    }
+
     // 1. Create Order in MongoDB
-    const newOrder = await Order.create({
+    const newOrder = new Order({
+      userId,
+      customerType: userId ? 'REGISTERED' : 'GUEST',
+      normalizedEmail,
+      normalizedPhone,
+      guestTrackingToken: createGuestTrackingToken(),
       products,
       address,
       totalAmount,
       paymentStatus: 'PENDING',
       orderStatus: 'PENDING',
     });
+    await newOrder.save();
 
     // 2. Create Razorpay Order
     const options = {

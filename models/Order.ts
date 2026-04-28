@@ -22,6 +22,10 @@ export interface IAddress {
 
 export interface IOrder extends Document {
   userId?: mongoose.Types.ObjectId; // Optional for guest checkouts
+  customerType: 'GUEST' | 'REGISTERED';
+  normalizedEmail: string;
+  normalizedPhone: string;
+  guestTrackingToken: string;
   products: IOrderItem[];
   totalAmount: number;
   paymentStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
@@ -30,6 +34,10 @@ export interface IOrder extends Document {
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
+  shippingCarrier?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  confirmationEmailSentAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -57,6 +65,14 @@ const AddressSchema = new Schema<IAddress>({
 const OrderSchema = new Schema<IOrder>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    customerType: {
+      type: String,
+      enum: ['GUEST', 'REGISTERED'],
+      default: 'GUEST',
+    },
+    normalizedEmail: { type: String, required: true, index: true },
+    normalizedPhone: { type: String, required: true, index: true },
+    guestTrackingToken: { type: String, required: true, unique: true, index: true },
     products: [OrderItemSchema],
     totalAmount: { type: Number, required: true },
     paymentStatus: {
@@ -73,6 +89,10 @@ const OrderSchema = new Schema<IOrder>(
     razorpayOrderId: { type: String },
     razorpayPaymentId: { type: String },
     razorpaySignature: { type: String },
+    shippingCarrier: { type: String },
+    trackingNumber: { type: String },
+    trackingUrl: { type: String },
+    confirmationEmailSentAt: { type: Date },
   },
   { timestamps: true }
 );

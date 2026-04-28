@@ -1,0 +1,28 @@
+MONGODB_USER=akhileshktm123
+MONGODB_PASS=Akhilesh@02
+MONGODB_HOST=cluster0.mrhmxas.mongodb.net
+MONGODB_APP=Cluster0
+
+# Razorpay Credentials (add these when you're ready)
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+NEXT_PUBLIC_RAZORPAY_KEY_ID=
+
+# MinIO Credentials
+MINIO_URL=https://minio-zc0s84w40swgs0sos000gck4.72.60.219.81.sslip.io
+MINIO_PUBLIC_URL=https://minio-zc0s84w40swgs0sos000gck4.72.60.219.81.sslip.io
+MINIO_CONSOLE_URL=https://console-zc0s84w40swgs0sos000gck4.72.60.219.81.sslip.io
+MINIO_ENDPOINT=minio-zc0s84w40swgs0sos000gck4.72.60.219.81.sslip.io
+MINIO_PORT=443
+MINIO_USE_SSL=true
+MINIO_ACCESS_KEY=DWIhFnMEn4t6gHU7
+MINIO_SECRET_KEY=4CFPnr1TQlzze7Lwpr9yEL0I6PiDXMTM
+MINIO_BUCKET_NAME=ecommerce-images
+MINIO_REGION=us-east-1
+
+# SEO & Site
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Analytics (optional — leave empty to disable)
+NEXT_PUBLIC_GA_ID=
+NEXT_PUBLIC_GTM_ID=

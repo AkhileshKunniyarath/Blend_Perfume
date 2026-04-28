@@ -114,7 +114,17 @@ export default function CheckoutPage() {
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
             clearCart();
-            router.push('/order-success');
+            const searchParams = new URLSearchParams();
+
+            if (verifyData.orderId) {
+              searchParams.set('order', verifyData.orderId);
+            }
+
+            if (verifyData.trackingUrl) {
+              searchParams.set('track', verifyData.trackingUrl);
+            }
+
+            router.push(`/order-success?${searchParams.toString()}`);
           } else {
             alert('Payment verification failed');
           }
@@ -169,7 +179,7 @@ export default function CheckoutPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-              <input required type="text" name="phone" value={formData.phone} onChange={handleChange} className="w-full border rounded-md p-2" />
+              <input required type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full border rounded-md p-2" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>

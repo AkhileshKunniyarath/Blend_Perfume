@@ -3,6 +3,8 @@ import connectToDatabase from '@/lib/db';
 import Order from '@/models/Order';
 import Product from '@/models/Product';
 import { verifyRazorpaySignature } from '@/lib/razorpay';
+import { sendOrderConfirmationEmail } from '@/lib/order-email';
+import { createGuestTrackingToken, getGuestTrackingUrl } from '@/lib/order-utils';
 
 async function deductStock(orderProducts: { productId: string; quantity: number; size?: string }[]) {
   for (const item of orderProducts) {
@@ -44,21 +46,66 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    order.paymentStatus = 'COMPLETED';
-    order.razorpayPaymentId = razorpayPaymentId;
-    order.razorpaySignature = razorpaySignature;
-    await order.save();
+    if (!order.guestTrackingToken) {
+      order.guestTrackingToken = createGuestTrackingToken();
+    }
 
-    // Deduct stock for each item in the order
-    await deductStock(
-      order.products.map((p) => ({
-        productId: p.productId.toString(),
-        quantity: p.quantity,
-        size: p.size,
-      }))
-    );
+    const paymentAlreadyCompleted = order.paymentStatus === 'COMPLETED';
 
-    return NextResponse.json({ success: true, message: 'Payment verified successfully' });
+    if (!paymentAlreadyCompleted) {
+      order.paymentStatus = 'COMPLETED';
+      order.razorpayPaymentId = razorpayPaymentId;
+      order.razorpaySignature = razorpaySignature;
+
+      if (order.orderStatus === 'PENDING') {
+        order.orderStatus = 'PROCESSING';
+      }
+
+      await order.save();
+
+      // Deduct stock only on the first successful verification.
+      await deductStock(
+        order.products.map((p) => ({
+          productId: p.productId.toString(),
+          quantity: p.quantity,
+          size: p.size,
+        }))
+      );
+    }
+
+    const trackingUrl = order.trackingUrl || getGuestTrackingUrl(order.guestTrackingToken);
+
+    if (!order.confirmationEmailSentAt) {
+      try {
+        const emailResult = await sendOrderConfirmationEmail({
+          _id: order._id,
+          address: order.address,
+          products: order.products,
+          totalAmount: order.totalAmount,
+          paymentStatus: order.paymentStatus,
+          orderStatus: order.orderStatus,
+          guestTrackingToken: order.guestTrackingToken,
+          shippingCarrier: order.shippingCarrier,
+          trackingNumber: order.trackingNumber,
+          trackingUrl: order.trackingUrl,
+          createdAt: order.createdAt,
+        });
+
+        if (emailResult.sent) {
+          order.confirmationEmailSentAt = new Date();
+          await order.save();
+        }
+      } catch (emailError) {
+        console.error('Error sending order confirmation email:', emailError);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Payment verified successfully',
+      orderId: order._id,
+      trackingUrl,
+    });
   } catch (error: unknown) {
     console.error('Error verifying payment:', error);
     return NextResponse.json({ error: 'Failed to verify payment' }, { status: 500 });
