@@ -38,9 +38,9 @@ export default async function UserLayout({
       </main>
 
       <footer className="mt-10 border-t border-white/45 bg-[linear-gradient(180deg,rgba(255,255,255,0.55),rgba(255,255,255,0.8))]">
-        <div className="section-shell grid gap-10 py-14 lg:grid-cols-[1.1fr_0.7fr_0.7fr_1fr]">
+        <div className="section-shell grid gap-10 py-14 lg:grid-cols-[1.15fr_0.7fr_0.7fr_0.7fr_1fr]">
           <div>
-            <BlendLogo className="w-48 max-w-full sm:w-56" />
+            <BlendLogo className="w-32 max-w-full sm:w-40" />
             <p className="mt-4 max-w-sm text-sm leading-7 text-[var(--foreground-soft)]">
               Clean luxury fragrances with expressive storytelling, refined ingredients, and a premium ritual from first spray to dry down.
             </p>
@@ -54,6 +54,15 @@ export default async function UserLayout({
               <Link href="/#best-sellers" className="block hover:text-[var(--accent-strong)]">Best Sellers</Link>
               <Link href="/cart" className="block hover:text-[var(--accent-strong)]">Cart</Link>
               <Link href="/checkout" className="block hover:text-[var(--accent-strong)]">Checkout</Link>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs uppercase tracking-[0.32em] text-[var(--foreground-soft)]">Company</p>
+            <div className="mt-4 space-y-3 text-sm text-[var(--foreground)]">
+              <Link href="/about-us" className="block hover:text-[var(--accent-strong)]">About Us</Link>
+              <Link href="/privacy-policy" className="block hover:text-[var(--accent-strong)]">Privacy Policy</Link>
+              <Link href="/terms-and-conditions" className="block hover:text-[var(--accent-strong)]">Terms &amp; Conditions</Link>
             </div>
           </div>
 
@@ -91,8 +100,16 @@ export default async function UserLayout({
           </div>
         </div>
 
-        <div className="section-shell border-t border-[var(--border)] py-5 text-xs uppercase tracking-[0.22em] text-[var(--foreground-soft)]">
-          © {new Date().getFullYear()} Blend Perfume. All rights reserved.
+        <div className="section-shell flex flex-col gap-3 border-t border-[var(--border)] py-5 text-xs uppercase tracking-[0.22em] text-[var(--foreground-soft)] sm:flex-row sm:items-center sm:justify-between">
+          <span>© {new Date().getFullYear()} Blend Perfume. All rights reserved.</span>
+          <a
+            href="https://toucchpointe.digital"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[10px] tracking-[0.28em] text-[var(--foreground-soft)]/78 transition hover:text-[var(--accent-strong)]"
+          >
+            Powered by touchpointe.digital
+          </a>
         </div>
       </footer>
     </div>

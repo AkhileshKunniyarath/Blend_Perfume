@@ -2,7 +2,8 @@ import connectToDatabase from '@/lib/db';
 import Product from '@/models/Product';
 import Category from '@/models/Category';
 import Order from '@/models/Order';
-import { ShoppingBag, Package, Tag, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
+import { ShoppingBag, Package, Tag, TrendingUp, AlertTriangle } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,14 @@ type DashboardOrder = {
   address?: {
     fullName?: string;
   };
+};
+
+type LowStockItem = {
+  _id: string;
+  name: string;
+  slug: string;
+  stock: number;
+  variants?: { size: string; stock: number }[];
 };
 
 async function getDashboardStats() {
@@ -29,17 +38,41 @@ async function getDashboardStats() {
     { $group: { _id: null, total: { $sum: '$totalAmount' } } },
   ]);
 
+  // Find products with low stock (product-level stock <= 5 OR any variant stock <= 5)
+  const lowStockProducts = await Product.find({
+    $or: [
+      { stock: { $lte: 5 }, variants: { $size: 0 } },
+      { stock: { $lte: 5 }, variants: { $exists: false } },
+      { 'variants.stock': { $lte: 5 } },
+    ],
+  })
+    .select('name slug stock variants.size variants.stock')
+    .sort({ stock: 1 })
+    .limit(10)
+    .lean();
+
   return {
     totalProducts,
     totalCategories,
     totalOrders,
     totalRevenue: revenue[0]?.total || 0,
     recentOrders: JSON.parse(JSON.stringify(recentOrders)) as DashboardOrder[],
+    lowStockProducts: JSON.parse(JSON.stringify(lowStockProducts)) as LowStockItem[],
   };
 }
 
 export default async function AdminDashboard() {
   const stats = await getDashboardStats();
+
+  // Count total low-stock SKUs
+  let lowStockCount = 0;
+  for (const product of stats.lowStockProducts) {
+    if (product.variants && product.variants.length > 0) {
+      lowStockCount += product.variants.filter((v) => v.stock <= 5).length;
+    } else {
+      lowStockCount += 1;
+    }
+  }
 
   const statCards = [
     { label: 'Total Products', value: stats.totalProducts, icon: Package, color: 'bg-blue-50 text-blue-600' },
@@ -73,39 +106,91 @@ export default async function AdminDashboard() {
         ))}
       </div>
 
-      {/* Recent Orders */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold">Recent Orders</h2>
-        </div>
-        {stats.recentOrders.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">No orders yet.</div>
-        ) : (
-          <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-3 text-sm font-medium text-gray-500">Order</th>
-                <th className="px-6 py-3 text-sm font-medium text-gray-500">Customer</th>
-                <th className="px-6 py-3 text-sm font-medium text-gray-500">Amount</th>
-                <th className="px-6 py-3 text-sm font-medium text-gray-500">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {stats.recentOrders.map((order) => (
-                <tr key={order._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-mono text-sm">#{order._id.substring(order._id.length - 6)}</td>
-                  <td className="px-6 py-4 text-sm">{order.address?.fullName || 'N/A'}</td>
-                  <td className="px-6 py-4 font-medium">₹{order.totalAmount}</td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs px-2 py-1 rounded-full ${statusColor[order.orderStatus] || 'bg-gray-100 text-gray-800'}`}>
-                      {order.orderStatus}
-                    </span>
-                  </td>
+      <div className="grid gap-6 lg:grid-cols-2 mb-10">
+        {/* Recent Orders */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold">Recent Orders</h2>
+          </div>
+          {stats.recentOrders.length === 0 ? (
+            <div className="p-6 text-center text-gray-500">No orders yet.</div>
+          ) : (
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-3 text-sm font-medium text-gray-500">Order</th>
+                  <th className="px-6 py-3 text-sm font-medium text-gray-500">Customer</th>
+                  <th className="px-6 py-3 text-sm font-medium text-gray-500">Amount</th>
+                  <th className="px-6 py-3 text-sm font-medium text-gray-500">Status</th>
                 </tr>
+              </thead>
+              <tbody className="divide-y">
+                {stats.recentOrders.map((order) => (
+                  <tr key={order._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-mono text-sm">#{order._id.substring(order._id.length - 6)}</td>
+                    <td className="px-6 py-4 text-sm">{order.address?.fullName || 'N/A'}</td>
+                    <td className="px-6 py-4 font-medium">₹{order.totalAmount}</td>
+                    <td className="px-6 py-4">
+                      <span className={`text-xs px-2 py-1 rounded-full ${statusColor[order.orderStatus] || 'bg-gray-100 text-gray-800'}`}>
+                        {order.orderStatus}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Low Stock Alerts */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={18} className="text-orange-500" />
+              <h2 className="text-lg font-semibold">Low Stock Alerts</h2>
+              {lowStockCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-700 font-medium">
+                  {lowStockCount}
+                </span>
+              )}
+            </div>
+            <Link href="/admin/inventory" className="text-sm text-blue-600 hover:text-blue-800">
+              View all →
+            </Link>
+          </div>
+          {stats.lowStockProducts.length === 0 ? (
+            <div className="p-6 text-center text-gray-500">All products are well stocked! 🎉</div>
+          ) : (
+            <div className="divide-y">
+              {stats.lowStockProducts.map((product) => (
+                <div key={product._id} className="px-6 py-3">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-sm">{product.name}</p>
+                    {(!product.variants || product.variants.length === 0) && (
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${product.stock <= 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                        {product.stock <= 0 ? 'Out of stock' : `${product.stock} left`}
+                      </span>
+                    )}
+                  </div>
+                  {product.variants && product.variants.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {product.variants
+                        .filter((v) => v.stock <= 5)
+                        .map((v) => (
+                          <span
+                            key={v.size}
+                            className={`px-2 py-0.5 rounded-full text-xs ${v.stock <= 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}
+                          >
+                            {v.size}: {v.stock <= 0 ? 'Out' : `${v.stock} left`}
+                          </span>
+                        ))}
+                    </div>
+                  )}
+                </div>
               ))}
-            </tbody>
-          </table>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -11,8 +11,8 @@
   --accent: #c9a96e;
   --accent-strong: #ab8451;
   --deep-black: #0f0f0f;
-  --font-inter: "Inter", "Helvetica Neue", Arial, sans-serif;
-  --font-playfair: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-inter: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  --font-playfair: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
   --font-geist-mono: "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", monospace;
 }
 
@@ -46,7 +46,7 @@ h3,
 h4,
 .font-display {
   font-family: var(--font-playfair), serif;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
 }
 
 a,
@@ -104,6 +104,15 @@ button {
 .hover-image-zoom:hover > img {
   transform: scale(1.04);
   filter: saturate(1.02);
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes softFadeUp {

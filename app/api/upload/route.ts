@@ -1,17 +1,55 @@
-import { NextResponse } from 'next/server';
-import minioClient, { MINIO_BUCKET_NAME, ensureBucketExists } from '@/lib/minio';
+import { randomUUID } from 'node:crypto';
+import { NextRequest, NextResponse } from 'next/server';
+import minioClient, {
+  MINIO_BUCKET_NAME,
+  ensureBucketExists,
+  getMinioObjectUrl,
+  isMinioConfigured,
+} from '@/lib/minio';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  // Guard: return a clear error if storage is not yet configured
+  if (!isMinioConfigured) {
+    return NextResponse.json(
+      {
+        error:
+          'Storage is not configured. Add MINIO_URL (or MINIO_ENDPOINT), MINIO_ACCESS_KEY, and MINIO_SECRET_KEY to .env.local and restart the server.',
+      },
+      { status: 503 }
+    );
+  }
+
   try {
-    const formData = await req.formData();
+    const contentType = req.headers.get('content-type') || '';
+    if (!contentType.includes('multipart/form-data')) {
+      return NextResponse.json(
+        { error: 'Request must be multipart/form-data' },
+        { status: 400 }
+      );
+    }
+
+    let formData: FormData;
+    try {
+      formData = await req.formData();
+    } catch {
+      return NextResponse.json(
+        { error: 'Failed to parse form data. Please try uploading again.' },
+        { status: 400 }
+      );
+    }
+
     const file = formData.get('file') as File;
-    
+
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+    const safeName = file.name
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9._-]/g, '');
+    const fileName = `${Date.now()}-${randomUUID()}-${safeName || 'upload'}`;
 
     await ensureBucketExists();
 
@@ -22,14 +60,7 @@ export async function POST(req: Request) {
       file.size,
       { 'Content-Type': file.type }
     );
-
-    // Depending on your setup, the URL might be different
-    // Often it's http://<minio-host>:<port>/<bucket-name>/<file-name>
-    const protocol = process.env.MINIO_USE_SSL === 'true' ? 'https' : 'http';
-    const host = process.env.MINIO_ENDPOINT || 'localhost';
-    const port = process.env.MINIO_PORT || '9000';
-    
-    const fileUrl = `${protocol}://${host}:${port}/${MINIO_BUCKET_NAME}/${fileName}`;
+    const fileUrl = getMinioObjectUrl(fileName);
 
     return NextResponse.json({ url: fileUrl }, { status: 201 });
   } catch (error) {
@@ -37,3 +68,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
   }
 }
+

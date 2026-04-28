@@ -9,15 +9,25 @@ type CategoryGridProps = {
 };
 
 export default function CategoryGrid({ title, subtitle, categories }: CategoryGridProps) {
-  const items =
-    categories.length > 0
-      ? categories
-      : [
-          { _id: 'men', name: 'Men', slug: '#', image: '' },
-          { _id: 'women', name: 'Women', slug: '#', image: '' },
-          { _id: 'unisex', name: 'Unisex', slug: '#', image: '' },
-          { _id: 'luxury', name: 'Luxury', slug: '#', image: '' },
-        ];
+  if (categories.length === 0) {
+    return (
+      <section id="collections" className="section-shell py-18 sm:py-24">
+        <div className="luxury-panel rounded-[2.4rem] px-8 py-14 text-center">
+          <p className="text-xs uppercase tracking-[0.38em] text-[var(--accent-strong)]">Collections</p>
+          <h2 className="mt-3 text-4xl text-[var(--deep-black)] sm:text-5xl">{title || 'Shop by Collection'}</h2>
+          <p className="mx-auto mt-5 max-w-lg text-sm leading-7 text-[var(--foreground-soft)]">
+            Add categories in the admin panel to populate this section.
+          </p>
+          <a
+            href="/admin/categories"
+            className="gold-button mt-8 inline-flex rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.16em]"
+          >
+            Manage Categories
+          </a>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="collections" className="section-shell py-18 sm:py-24">
@@ -30,10 +40,10 @@ export default function CategoryGrid({ title, subtitle, categories }: CategoryGr
       </div>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {items.map((category, index) => (
+        {categories.map((category) => (
           <Link
             key={category._id}
-            href={categories.length > 0 ? `/category/${category.slug}` : '/'}
+            href={`/category/${category.slug}`}
             className="group relative overflow-hidden rounded-[2rem] border border-white/45 bg-[var(--deep-black)]"
           >
             {category.image ? (
@@ -49,7 +59,7 @@ export default function CategoryGrid({ title, subtitle, categories }: CategoryGr
             <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-6 text-white">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.34em] text-white/65">
-                  {index === 0 ? 'Men' : index === 1 ? 'Women' : index === 2 ? 'Unisex' : 'Luxury'}
+                  {category.name}
                 </p>
                 <h3 className="mt-2 text-3xl">{category.name}</h3>
               </div>

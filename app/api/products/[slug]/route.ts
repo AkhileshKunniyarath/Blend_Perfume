@@ -19,7 +19,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ slug: st
     await connectToDatabase();
     const { slug } = await params;
     const body = await req.json();
-    const updated = await Product.findOneAndUpdate({ slug }, { $set: body }, { new: true });
+    const updated = await Product.findOneAndUpdate({ slug }, { $set: body }, { returnDocument: 'after' });
     if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(updated);
   } catch {

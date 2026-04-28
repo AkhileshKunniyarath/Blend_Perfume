@@ -9,6 +9,9 @@ export type StorefrontCategory = {
 export type ProductVariant = {
   size: string;
   price: number;
+  cutPrice?: number;
+  stock: number;
+  image?: string;
 };
 
 export type StorefrontProduct = {
@@ -23,6 +26,23 @@ export type StorefrontProduct = {
   variants?: ProductVariant[];
   categoryId?: StorefrontCategory | string;
 };
+
+export const PRODUCT_IMAGE_PLACEHOLDER = '/no-image-placeholder.svg';
+
+export function getValidProductImages(images?: string[]) {
+  return Array.from(
+    new Set(
+      (images || [])
+        .map((image) => image?.trim())
+        .filter((image): image is string => Boolean(image))
+    )
+  );
+}
+
+export function getProductPrimaryImage(images?: string[]) {
+  const firstImage = getValidProductImages(images)[0];
+  return firstImage || PRODUCT_IMAGE_PLACEHOLDER;
+}
 
 export function getEffectivePrice(product: Pick<StorefrontProduct, 'price' | 'salePrice'>) {
   return product.salePrice && product.salePrice < product.price ? product.salePrice : product.price;

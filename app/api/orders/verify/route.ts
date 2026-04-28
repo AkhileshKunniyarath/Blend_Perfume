@@ -1,7 +1,31 @@
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Order from '@/models/Order';
+import Product from '@/models/Product';
 import { verifyRazorpaySignature } from '@/lib/razorpay';
+
+async function deductStock(orderProducts: { productId: string; quantity: number; size?: string }[]) {
+  for (const item of orderProducts) {
+    if (item.size) {
+      // Decrement variant stock AND product-level stock atomically
+      await Product.updateOne(
+        { _id: item.productId, 'variants.size': item.size },
+        {
+          $inc: {
+            'variants.$.stock': -item.quantity,
+            stock: -item.quantity,
+          },
+        }
+      );
+    } else {
+      // No variant — decrement product-level stock only
+      await Product.updateOne(
+        { _id: item.productId },
+        { $inc: { stock: -item.quantity } }
+      );
+    }
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -24,6 +48,15 @@ export async function POST(req: Request) {
     order.razorpayPaymentId = razorpayPaymentId;
     order.razorpaySignature = razorpaySignature;
     await order.save();
+
+    // Deduct stock for each item in the order
+    await deductStock(
+      order.products.map((p) => ({
+        productId: p.productId.toString(),
+        quantity: p.quantity,
+        size: p.size,
+      }))
+    );
 
     return NextResponse.json({ success: true, message: 'Payment verified successfully' });
   } catch (error: unknown) {

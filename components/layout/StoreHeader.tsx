@@ -49,19 +49,11 @@ export default function StoreHeader({ categories }: { categories: NavCategory[] 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
-  const categoryLinks =
-    categories.length > 0
-      ? categories.slice(0, 8).map((category) => ({
-          label: category.name,
-          href: `/category/${category.slug}`,
-          description: `Explore the ${category.name.toLowerCase()} fragrance edit.`,
-        }))
-      : [
-          { label: 'Men', href: '/#collections', description: 'Refined profiles for daily and evening wear.' },
-          { label: 'Women', href: '/#collections', description: 'Elegant blends with modern softness and depth.' },
-          { label: 'Unisex', href: '/#collections', description: 'Balanced scents with versatile mood and projection.' },
-          { label: 'Luxury', href: '/#collections', description: 'Premium selections with elevated presentation.' },
-        ];
+  const categoryLinks = categories.slice(0, 8).map((category) => ({
+    label: category.name,
+    href: `/category/${category.slug}`,
+    description: `Explore the ${category.name.toLowerCase()} fragrance edit.`,
+  }));
 
   const menuItems: MenuItem[] = [
     { label: 'Home', href: '/' },

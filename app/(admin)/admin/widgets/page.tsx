@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   GripVertical,
   ImagePlus,
@@ -209,20 +210,34 @@ export default function WidgetsAdmin() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      let res: Response | null = null;
+      let lastError: Error | null = null;
 
-      const payload = await res.json();
-      if (!res.ok) {
-        throw new Error(payload.error || 'Failed to upload image');
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          res = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          if (res.ok) break;
+          const errPayload = await res.json();
+          lastError = new Error(errPayload.error || 'Upload failed');
+          // Retry on 400 (form-data parse error) but not on other errors
+          if (res.status !== 400) break;
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error('Network error');
+        }
       }
 
+      if (!res || !res.ok) {
+        throw lastError || new Error('Failed to upload image');
+      }
+
+      const payload = await res.json();
       updateData({ [field]: payload.url } as Partial<WidgetData>);
     } catch (error) {
       console.error('Error uploading image:', error);
-      window.alert('Image upload failed. Please check your storage configuration.');
+      window.alert('Image upload failed. Please try again.');
     } finally {
       setUploadingField(null);
     }
@@ -743,6 +758,20 @@ export default function WidgetsAdmin() {
 
           {draft.type === 'CATEGORY_GRID' && (
             <div className="mt-7 space-y-2">
+              <div className="flex flex-col gap-3 rounded-[1.25rem] border border-[var(--border)] bg-white/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Homepage Collections</p>
+                  <p className="mt-1 text-sm text-[var(--foreground-soft)]">
+                    Choose which categories appear in the collection cards. Collection images and details are managed from Categories.
+                  </p>
+                </div>
+                <Link
+                  href="/admin/categories"
+                  className="inline-flex items-center justify-center rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--deep-black)]"
+                >
+                  Edit Categories
+                </Link>
+              </div>
               <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Category Selection</span>
               <div className="grid gap-2 rounded-[1rem] border border-[var(--border)] bg-white/70 p-3 sm:grid-cols-2">
                 {categories.map((category) => {

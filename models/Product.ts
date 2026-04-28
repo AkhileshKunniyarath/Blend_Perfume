@@ -3,6 +3,11 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IVariant {
   size: string;
   price: number;
+  cutPrice?: number;
+  stock: number;
+  image?: string;
+  rating?: number;
+  reviewCount?: number;
 }
 
 export interface IProduct extends Document {
@@ -15,6 +20,7 @@ export interface IProduct extends Document {
   categoryId: mongoose.Types.ObjectId;
   stock: number;
   variants: IVariant[];
+  features?: string[];
   seoTitle?: string;
   seoDescription?: string;
   createdAt: Date;
@@ -24,6 +30,11 @@ export interface IProduct extends Document {
 const VariantSchema = new Schema<IVariant>({
   size: { type: String, required: true },
   price: { type: Number, required: true },
+  cutPrice: { type: Number },
+  stock: { type: Number, required: true, default: 0 },
+  image: { type: String },
+  rating: { type: Number, min: 0, max: 5 },
+  reviewCount: { type: Number, default: 0 },
 });
 
 const ProductSchema = new Schema<IProduct>(
@@ -37,6 +48,7 @@ const ProductSchema = new Schema<IProduct>(
     categoryId: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
     stock: { type: Number, required: true, default: 0 },
     variants: [VariantSchema],
+    features: [{ type: String }],
     seoTitle: { type: String },
     seoDescription: { type: String },
   },

@@ -1,12 +1,10 @@
 import { Metadata } from 'next';
 import connectToDatabase from '@/lib/db';
 import Product from '@/models/Product';
-import AddToCartButton from '@/components/product/AddToCartButton';
 import { notFound } from 'next/navigation';
-import ProductGallery from '@/components/product/ProductGallery';
+import ProductDetailHero from '@/components/product/ProductDetailHero';
 import ProductSlider from '@/components/ProductSlider';
-import { extractFragranceNotes, getEffectivePrice } from '@/lib/storefront';
-import { formatCurrency } from '@/lib/utils';
+import { extractFragranceNotes } from '@/lib/storefront';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,72 +63,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   );
   const notes = extractFragranceNotes(product.description);
   const hasNotes = Boolean(notes.top || notes.middle || notes.base);
-  const effectivePrice = getEffectivePrice(serializedProduct);
 
   return (
     <div className="pb-24">
       <div className="section-shell py-8 sm:py-12">
-        <div className="grid gap-8 xl:grid-cols-[1.08fr_0.92fr]">
-          <ProductGallery images={serializedProduct.images || []} name={serializedProduct.name} />
-
-          <div className="luxury-panel rounded-[2.4rem] p-6 sm:p-8 lg:p-10">
-            <p className="text-xs uppercase tracking-[0.38em] text-[var(--accent-strong)]">
-              {typeof serializedProduct.categoryId === 'object' && serializedProduct.categoryId?.name
-                ? serializedProduct.categoryId.name
-                : 'Blend Perfume'}
-            </p>
-            <h1 className="mt-4 text-4xl text-[var(--deep-black)] sm:text-5xl">
-              {serializedProduct.name}
-            </h1>
-            <div className="mt-5 flex flex-wrap items-end gap-3">
-              <p className="text-3xl font-semibold text-[var(--deep-black)]">{formatCurrency(effectivePrice)}</p>
-              {serializedProduct.salePrice && serializedProduct.salePrice < serializedProduct.price && (
-                <p className="text-lg text-[var(--foreground-soft)] line-through">
-                  {formatCurrency(serializedProduct.price)}
-                </p>
-              )}
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3 text-xs uppercase tracking-[0.24em] text-[var(--foreground-soft)]">
-              <span className="rounded-full border border-[var(--border)] bg-white/72 px-4 py-2">
-                {serializedProduct.stock > 0 ? 'In stock' : 'Sold out'}
-              </span>
-              <span className="rounded-full border border-[var(--border)] bg-white/72 px-4 py-2">
-                Long lasting fragrance
-              </span>
-              <span className="rounded-full border border-[var(--border)] bg-white/72 px-4 py-2">
-                Premium oils
-              </span>
-            </div>
-
-            <p className="mt-8 whitespace-pre-wrap text-base leading-8 text-[var(--foreground-soft)]">
-              {serializedProduct.description}
-            </p>
-
-            <div className="mt-10">
-              <AddToCartButton product={serializedProduct} />
-            </div>
-
-            <div className="mt-10 grid gap-4 border-t border-[var(--border)] pt-8 sm:grid-cols-3">
-              <div className="rounded-[1.5rem] border border-white/60 bg-white/58 p-4">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--foreground-soft)]">Projection</p>
-                <p className="mt-2 text-lg text-[var(--deep-black)]">Smooth, noticeable trail</p>
-              </div>
-              <div className="rounded-[1.5rem] border border-white/60 bg-white/58 p-4">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--foreground-soft)]">Wear</p>
-                <p className="mt-2 text-lg text-[var(--deep-black)]">Day-to-night luxury</p>
-              </div>
-              <div className="rounded-[1.5rem] border border-white/60 bg-white/58 p-4">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--foreground-soft)]">Sizes</p>
-                <p className="mt-2 text-lg text-[var(--deep-black)]">
-                  {serializedProduct.variants?.length
-                    ? serializedProduct.variants.map((variant: { size: string }) => variant.size).join(', ')
-                    : 'Standard'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ProductDetailHero product={serializedProduct} />
       </div>
 
       <div className="section-shell grid gap-5 pb-10 lg:grid-cols-[0.95fr_1.05fr]">

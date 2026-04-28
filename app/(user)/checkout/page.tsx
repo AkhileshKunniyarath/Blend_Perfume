@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/lib/store/cart';
+import { getProductPrimaryImage } from '@/lib/storefront';
 import Script from 'next/script';
 
 type RazorpayResponse = {
@@ -209,20 +210,24 @@ export default function CheckoutPage() {
           <div className="bg-gray-50 p-6 rounded-lg border">
             <h2 className="text-xl font-semibold mb-6">Order Summary</h2>
             <div className="space-y-4 mb-6">
-              {items.map((item) => (
-                <div key={`${item.id}-${item.size}`} className="flex justify-between">
-                  <div className="flex gap-4">
-                    <div className="w-16 h-16 bg-gray-200 rounded-md">
-                      {item.image && <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-md" />}
+              {items.map((item) => {
+                const itemImage = getProductPrimaryImage(item.image ? [item.image] : []);
+
+                return (
+                  <div key={`${item.id}-${item.size}`} className="flex justify-between">
+                    <div className="flex gap-4">
+                      <div className="w-16 h-16 bg-gray-200 rounded-md">
+                        <img src={itemImage} alt={item.name} className="w-full h-full object-cover rounded-md" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-sm text-gray-500">Qty: {item.quantity} {item.size ? `| Size: ${item.size}` : ''}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-500">Qty: {item.quantity} {item.size ? `| Size: ${item.size}` : ''}</p>
-                    </div>
+                    <p className="font-medium">₹{item.price * item.quantity}</p>
                   </div>
-                  <p className="font-medium">₹{item.price * item.quantity}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="border-t pt-4 space-y-2">
               <div className="flex justify-between text-gray-600">
