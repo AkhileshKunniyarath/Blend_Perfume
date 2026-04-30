@@ -100,12 +100,23 @@ export async function POST(req: Request) {
 
     // 2. Create Razorpay Order
     const options = {
-      amount: Math.round(totalAmount * 100), // amount in the smallest currency unit (paise)
+      amount: Math.round(totalAmount * 100),
       currency: 'INR',
       receipt: newOrder._id.toString(),
     };
 
-    const razorpayInstance = getRazorpayInstance();
+    let razorpayInstance;
+    try {
+      razorpayInstance = getRazorpayInstance();
+    } catch {
+      // Clean up the pending order so it doesn't litter the DB
+      await newOrder.deleteOne();
+      return NextResponse.json(
+        { error: 'Payment gateway is not configured. Please add your Razorpay API keys to .env.local.' },
+        { status: 503 }
+      );
+    }
+
     const razorpayOrder = await razorpayInstance.orders.create(options);
 
     // 3. Update Order with Razorpay Order ID

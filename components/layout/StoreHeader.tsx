@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ArrowRight, ChevronDown, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BlendLogo } from '@/components/brand/BlendLogo';
 import CartIcon from '@/components/ui/CartIcon';
+import UserNav from '@/components/ui/UserNav';
 import { cn } from '@/lib/utils';
 import {
   DISCOVERY_LINKS,
@@ -20,6 +21,12 @@ type NavCategory = {
   slug: string;
 };
 
+type UserSession = {
+  name: string;
+  email: string;
+  phone: string;
+} | null;
+
 type MenuItem = {
   label: string;
   href?: string;
@@ -32,22 +39,103 @@ type MenuItem = {
   };
 };
 
-function isActivePath(pathname: string, href: string) {
-  if (href.startsWith('/#')) {
-    return pathname === '/';
+// Returns true when the given href matches the current page + hash
+function isActivePath(pathname: string, hash: string, href: string): boolean {
+  // External links (mailto:, https:, etc.) are never active
+  if (href.includes(':')) return false;
+
+  // Hash-anchor links: active only when on the same base path AND same hash
+  if (href.includes('#')) {
+    const [hrefPath, hrefHash] = href.split('#');
+    const basePath = hrefPath || '/';
+    return pathname === basePath && hash === `#${hrefHash}`;
   }
 
-  if (href === '/') {
-    return pathname === '/';
-  }
+  // Exact match for home
+  if (href === '/') return pathname === '/';
 
-  return pathname.startsWith(href);
+  // Exact match for all other routes (avoids /products matching /product/[slug])
+  return pathname === href;
 }
 
-export default function StoreHeader({ categories }: { categories: NavCategory[] }) {
+// Returns true when a nav item (plain link or dropdown) is "active"
+function isMenuActive(pathname: string, hash: string, item: MenuItem | undefined): boolean {
+  if (!item) return false;
+  if (item.href) return isActivePath(pathname, hash, item.href);
+  // Dropdown: active when any child link is active
+  return (
+    item.groups?.some((group) =>
+      group.links.some((link) => isActivePath(pathname, hash, link.href))
+    ) ?? false
+  );
+}
+
+export default function StoreHeader({
+  categories,
+  session,
+}: {
+  categories: NavCategory[];
+  session: UserSession;
+}) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [hash, setHash] = useState('');
+
+  // Single effect: syncs hash from URL on non-home pages,
+  // and runs scroll-spy on the homepage.
+  useEffect(() => {
+    if (pathname !== '/') {
+      setHash(window.location.hash || '');
+      return;
+    }
+
+    // On homepage: seed from URL hash first (handles direct links like /#best-sellers)
+    if (window.location.hash) {
+      setHash(window.location.hash);
+    }
+
+    const sectionIds = ['best-sellers', 'collections', 'story', 'testimonials'];
+
+    const handleScroll = () => {
+      if (window.scrollY < 80) {
+        setHash('');
+        return;
+      }
+
+      const mid = window.innerHeight / 2;
+      let closest: string | null = null;
+      let closestDist = Infinity;
+
+      sectionIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const top = el.getBoundingClientRect().top;
+        const dist = Math.abs(top - mid);
+        if (top <= mid + 100 && dist < closestDist) {
+          closestDist = dist;
+          closest = id;
+        }
+      });
+
+      setHash(closest ? `#${closest}` : '');
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [pathname]);
+
+  // When a nav link is clicked, immediately sync the hash so active state updates
+  function handleNavClick(href: string) {
+    if (href.includes('#')) {
+      const hashPart = '#' + href.split('#')[1];
+      setHash(hashPart);
+    } else {
+      setHash('');
+    }
+    setMobileOpen(false);
+  }
 
   const categoryLinks = categories.slice(0, 8).map((category) => ({
     label: category.name,
@@ -131,12 +219,13 @@ export default function StoreHeader({ categories }: { categories: NavCategory[] 
         <Link
           href="/"
           className="min-w-fit"
-          onClick={() => setMobileOpen(false)}
+          onClick={() => { setMobileOpen(false); setHash(''); }}
           aria-label="Blend Perfume home"
         >
           <BlendLogo className="w-24 sm:w-28" />
         </Link>
 
+        {/* ── Desktop nav ── */}
         <nav className="hidden items-center gap-2 md:flex">
           {menuItems.map((item) =>
             item.groups ? (
@@ -144,14 +233,15 @@ export default function StoreHeader({ categories }: { categories: NavCategory[] 
                 key={item.label}
                 className="relative"
                 onMouseEnter={() => setOpenMenu(item.label)}
-                onMouseLeave={() => setOpenMenu((current) => (current === item.label ? null : current))}
+                onMouseLeave={() => setOpenMenu(null)}
               >
+                {/* Dropdown trigger */}
                 <button
                   type="button"
                   className={cn(
                     'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm',
-                    openMenu === item.label
-                      ? 'bg-white/80 text-[var(--deep-black)]'
+                    openMenu === item.label || isMenuActive(pathname, hash, item)
+                      ? 'bg-[var(--deep-black)] text-white'
                       : 'text-[var(--foreground-soft)] hover:bg-white/70 hover:text-[var(--deep-black)]'
                   )}
                 >
@@ -159,43 +249,57 @@ export default function StoreHeader({ categories }: { categories: NavCategory[] 
                   <ChevronDown className="h-4 w-4" />
                 </button>
 
+                {/* Dropdown panel */}
                 <div
                   className={cn(
-                    'absolute left-1/2 top-full w-[46rem] -translate-x-1/2 pt-3 transition-all',
-                    openMenu === item.label ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+                    'absolute left-1/2 top-full w-[46rem] -translate-x-1/2 pt-3 transition-all duration-150',
+                    openMenu === item.label
+                      ? 'pointer-events-auto opacity-100'
+                      : 'pointer-events-none opacity-0'
                   )}
                 >
                   <div className="luxury-panel rounded-[2rem] p-4">
                     <div className="grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
                       <div className="grid gap-4 sm:grid-cols-2">
                         {item.groups.map((group) => (
-                          <div key={group.title} className="rounded-[1.5rem] border border-white/50 bg-white/52 p-3">
+                          <div
+                            key={group.title}
+                            className="rounded-[1.5rem] border border-white/50 bg-white/52 p-3"
+                          >
                             <p className="px-3 py-2 text-[10px] uppercase tracking-[0.3em] text-[var(--foreground-soft)]">
                               {group.title}
                             </p>
                             <div className="space-y-1">
-                              {group.links.map((child) => (
-                                <Link
-                                  key={child.href + child.label}
-                                  href={child.href}
-                                  className={cn(
-                                    'block rounded-[1rem] px-3 py-3',
-                                    isActivePath(pathname, child.href)
-                                      ? 'bg-[var(--deep-black)] text-white'
-                                      : 'text-[var(--foreground)] hover:bg-[var(--background-strong)]'
-                                  )}
-                                >
-                                  <p className="text-sm font-medium">{child.label}</p>
-                                  {child.description && (
-                                    <p className={cn(
-                                      'mt-1 text-xs leading-5',
-                                      isActivePath(pathname, child.href) ? 'text-white/72' : 'text-[var(--foreground-soft)]'
-                                    )}>
-                                      {child.description}
-                                    </p>
-                                  )}
-                                </Link>
-                              ))}
+                              {group.links.map((child) => {
+                                const active = isActivePath(pathname, hash, child.href);
+                                return (
+                                  <Link
+                                    key={child.href + child.label}
+                                    href={child.href}
+                                    onClick={() => handleNavClick(child.href)}
+                                    className={cn(
+                                      'block rounded-[1rem] px-3 py-3',
+                                      active
+                                        ? 'bg-[var(--deep-black)] text-white'
+                                        : 'text-[var(--foreground)] hover:bg-[var(--background-strong)]'
+                                    )}
+                                  >
+                                    <p className="text-sm font-medium">{child.label}</p>
+                                    {child.description && (
+                                      <p
+                                        className={cn(
+                                          'mt-1 text-xs leading-5',
+                                          active
+                                            ? 'text-white/72'
+                                            : 'text-[var(--foreground-soft)]'
+                                        )}
+                                      >
+                                        {child.description}
+                                      </p>
+                                    )}
+                                  </Link>
+                                );
+                              })}
                             </div>
                           </div>
                         ))}
@@ -227,9 +331,10 @@ export default function StoreHeader({ categories }: { categories: NavCategory[] 
               <Link
                 key={item.label}
                 href={item.href || '/'}
+                onClick={() => handleNavClick(item.href || '/')}
                 className={cn(
                   'rounded-full px-4 py-2 text-sm',
-                  isActivePath(pathname, item.href || '/')
+                  isMenuActive(pathname, hash, item)
                     ? 'bg-[var(--deep-black)] text-white'
                     : 'text-[var(--foreground-soft)] hover:bg-white/70 hover:text-[var(--deep-black)]'
                 )}
@@ -244,6 +349,7 @@ export default function StoreHeader({ categories }: { categories: NavCategory[] 
           <div className="hidden rounded-full border border-white/60 bg-white/65 px-4 py-2 text-xs uppercase tracking-[0.28em] text-[var(--foreground-soft)] sm:block">
             Premium Oils
           </div>
+          <UserNav session={session} />
           <CartIcon />
           <button
             type="button"
@@ -256,6 +362,7 @@ export default function StoreHeader({ categories }: { categories: NavCategory[] 
         </div>
       </div>
 
+      {/* ── Mobile nav ── */}
       {mobileOpen && (
         <div className="border-t border-white/45 md:hidden">
           <div className="section-shell py-4">
@@ -263,7 +370,10 @@ export default function StoreHeader({ categories }: { categories: NavCategory[] 
               <div className="space-y-2">
                 {menuItems.map((item) =>
                   item.groups ? (
-                    <div key={item.label} className="rounded-[1.3rem] border border-white/55 bg-white/58 p-2">
+                    <div
+                      key={item.label}
+                      className="rounded-[1.3rem] border border-white/55 bg-white/58 p-2"
+                    >
                       <p className="px-3 py-2 text-xs uppercase tracking-[0.28em] text-[var(--foreground-soft)]">
                         {item.label}
                       </p>
@@ -274,29 +384,36 @@ export default function StoreHeader({ categories }: { categories: NavCategory[] 
                               {group.title}
                             </p>
                             <div className="space-y-1">
-                              {group.links.map((child) => (
-                                <Link
-                                  key={child.href + child.label}
-                                  href={child.href}
-                                  onClick={() => setMobileOpen(false)}
-                                  className={cn(
-                                    'block rounded-[1rem] px-3 py-3',
-                                    isActivePath(pathname, child.href)
-                                      ? 'bg-[var(--deep-black)] text-white'
-                                      : 'text-[var(--foreground)] hover:bg-[var(--background-strong)]'
-                                  )}
-                                >
-                                  <p className="text-sm font-medium">{child.label}</p>
-                                  {child.description && (
-                                    <p className={cn(
-                                      'mt-1 text-xs leading-5',
-                                      isActivePath(pathname, child.href) ? 'text-white/72' : 'text-[var(--foreground-soft)]'
-                                    )}>
-                                      {child.description}
-                                    </p>
-                                  )}
-                                </Link>
-                              ))}
+                              {group.links.map((child) => {
+                                const active = isActivePath(pathname, hash, child.href);
+                                return (
+                                  <Link
+                                    key={child.href + child.label}
+                                    href={child.href}
+                                    onClick={() => handleNavClick(child.href)}
+                                    className={cn(
+                                      'block rounded-[1rem] px-3 py-3',
+                                      active
+                                        ? 'bg-[var(--deep-black)] text-white'
+                                        : 'text-[var(--foreground)] hover:bg-[var(--background-strong)]'
+                                    )}
+                                  >
+                                    <p className="text-sm font-medium">{child.label}</p>
+                                    {child.description && (
+                                      <p
+                                        className={cn(
+                                          'mt-1 text-xs leading-5',
+                                          active
+                                            ? 'text-white/72'
+                                            : 'text-[var(--foreground-soft)]'
+                                        )}
+                                      >
+                                        {child.description}
+                                      </p>
+                                    )}
+                                  </Link>
+                                );
+                              })}
                             </div>
                           </div>
                         ))}
@@ -306,10 +423,10 @@ export default function StoreHeader({ categories }: { categories: NavCategory[] 
                     <Link
                       key={item.label}
                       href={item.href || '/'}
-                      onClick={() => setMobileOpen(false)}
+                      onClick={() => handleNavClick(item.href || '/')}
                       className={cn(
                         'block rounded-[1.2rem] px-4 py-3 text-sm',
-                        isActivePath(pathname, item.href || '/')
+                        isMenuActive(pathname, hash, item)
                           ? 'bg-[var(--deep-black)] text-white'
                           : 'bg-white/58 text-[var(--foreground)]'
                       )}

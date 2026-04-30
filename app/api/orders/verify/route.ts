@@ -94,9 +94,12 @@ export async function POST(req: Request) {
         if (emailResult.sent) {
           order.confirmationEmailSentAt = new Date();
           await order.save();
+          console.log(`✅ Order confirmation email sent for order ${order._id}`);
+        } else if (emailResult.skipped) {
+          console.warn(`⚠️ Email skipped for order ${order._id} — RESEND_API_KEY or ORDER_EMAIL_FROM not set in .env.local`);
         }
       } catch (emailError) {
-        console.error('Error sending order confirmation email:', emailError);
+        console.error(`❌ Failed to send order confirmation email for order ${order._id}:`, emailError);
       }
     }
 

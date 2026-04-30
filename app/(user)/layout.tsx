@@ -4,6 +4,7 @@ import connectToDatabase from '@/lib/db';
 import Category from '@/models/Category';
 import { BlendLogo } from '@/components/brand/BlendLogo';
 import StoreHeader from '@/components/layout/StoreHeader';
+import { getSession } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,11 +28,18 @@ export default async function UserLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const categories = await getHeaderCategories();
+  const [categories, session] = await Promise.all([
+    getHeaderCategories(),
+    getSession(),
+  ]);
+
+  const userSession = session
+    ? { name: session.name, email: session.email, phone: session.phone }
+    : null;
 
   return (
     <div className="min-h-screen flex flex-col w-full">
-      <StoreHeader categories={categories} />
+      <StoreHeader categories={categories} session={userSession} />
 
       <main className="flex-grow">
         {children}

@@ -10,8 +10,11 @@
   },
   "dependencies": {
     "@next/third-parties": "^16.2.4",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "form-data": "^4.0.5",
+    "jose": "^6.2.3",
     "lucide-react": "^1.9.0",
     "minio": "^8.0.7",
     "mongoose": "^9.5.0",
