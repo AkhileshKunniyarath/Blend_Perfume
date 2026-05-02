@@ -4,9 +4,9 @@ MONGODB_HOST=cluster0.mrhmxas.mongodb.net
 MONGODB_APP=Cluster0
 
 # Razorpay Credentials (add these when you're ready)
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-NEXT_PUBLIC_RAZORPAY_KEY_ID=
+RAZORPAY_KEY_ID=rzp_test_SjOXdBqLgGqOor
+RAZORPAY_KEY_SECRET=P75SC9pOO2dJdGPzOMr11IS6
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_SjOXdBqLgGqOor
 
 # MinIO Credentials
 MINIO_URL=https://minio-zc0s84w40swgs0sos000gck4.72.60.219.81.sslip.io
@@ -19,6 +19,16 @@ MINIO_ACCESS_KEY=DWIhFnMEn4t6gHU7
 MINIO_SECRET_KEY=4CFPnr1TQlzze7Lwpr9yEL0I6PiDXMTM
 MINIO_BUCKET_NAME=ecommerce-images
 MINIO_REGION=us-east-1
+
+# Auth
+SESSION_SECRET=ms68LjbdPObRyaulNDG0nHSO7A5Tp9sZqQguhXMWZW4=
+
+# Email (Resend)
+RESEND_API_KEY=re_GBmnSZ23_8MupmgXbcZY13W6DjknQ3TjR
+ORDER_EMAIL_FROM=onboarding@resend.dev
+# For testing: override recipient so all emails go to your own address (Resend free tier restriction)
+# Remove this once you verify your domain at resend.com/domains
+ORDER_EMAIL_TEST_RECIPIENT=contact@touchpointe.digital
 
 # SEO & Site
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
