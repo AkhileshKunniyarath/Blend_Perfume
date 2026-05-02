@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit, Trash2, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, Image as ImageIcon, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { getProductPrimaryImage, getValidProductImages } from '@/lib/storefront';
 
 const PRODUCTS_PER_PAGE = 15;
@@ -59,6 +59,12 @@ export default function ProductsAdmin() {
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Reset to first page whenever search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const initialFormState: ProductFormState = {
     name: '',
@@ -75,10 +81,21 @@ export default function ProductsAdmin() {
 
   const [formData, setFormData] = useState<ProductFormState>(initialFormState);
 
-  const totalPages = Math.max(1, Math.ceil(products.length / PRODUCTS_PER_PAGE));
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.slug.toLowerCase().includes(q) ||
+        (p.categoryId?.name ?? '').toLowerCase().includes(q)
+    );
+  }, [products, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
   const paginatedProducts = useMemo(
-    () => products.slice((currentPage - 1) * PRODUCTS_PER_PAGE, currentPage * PRODUCTS_PER_PAGE),
-    [products, currentPage]
+    () => filteredProducts.slice((currentPage - 1) * PRODUCTS_PER_PAGE, currentPage * PRODUCTS_PER_PAGE),
+    [filteredProducts, currentPage]
   );
 
   async function fetchProducts() {
@@ -272,8 +289,30 @@ export default function ProductsAdmin() {
         </button>
       </div>
 
-      {showForm && (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
+      {/* Search bar */}
+      {!showForm && (
+        <div className="relative mb-6 max-w-sm">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search by name, slug or category…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full border rounded-md py-2 pl-9 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-black/20"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {showForm && (        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
           <h2 className="text-lg font-semibold mb-6">{editingId ? 'Edit Product' : 'Add New Product'}</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -545,6 +584,11 @@ export default function ProductsAdmin() {
           <div className="p-6 text-center text-gray-500">Loading...</div>
         ) : products.length === 0 ? (
           <div className="p-6 text-center text-gray-500">No products found.</div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">
+            No products match &ldquo;{searchQuery}&rdquo;.{' '}
+            <button onClick={() => setSearchQuery('')} className="text-black underline">Clear search</button>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[800px]">
@@ -616,7 +660,8 @@ export default function ProductsAdmin() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
                 <p className="text-sm text-gray-500">
-                  Showing {(currentPage - 1) * PRODUCTS_PER_PAGE + 1}–{Math.min(currentPage * PRODUCTS_PER_PAGE, products.length)} of {products.length} products
+                  Showing {(currentPage - 1) * PRODUCTS_PER_PAGE + 1}–{Math.min(currentPage * PRODUCTS_PER_PAGE, filteredProducts.length)} of {filteredProducts.length} products
+                  {searchQuery && ` matching "${searchQuery}"`}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
