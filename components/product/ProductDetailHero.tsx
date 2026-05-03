@@ -53,22 +53,41 @@ export default function ProductDetailHero({ product }: { product: ProductDetailH
         />
 
         <div className="mt-10 grid gap-4 border-t border-[var(--border)] pt-8 sm:grid-cols-3">
-          <div className="rounded-[1.5rem] border border-white/60 bg-white/58 p-4">
-            <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--foreground-soft)]">Projection</p>
-            <p className="mt-2 text-lg text-[var(--deep-black)]">Smooth, noticeable trail</p>
-          </div>
-          <div className="rounded-[1.5rem] border border-white/60 bg-white/58 p-4">
-            <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--foreground-soft)]">Wear</p>
-            <p className="mt-2 text-lg text-[var(--deep-black)]">Day-to-night luxury</p>
-          </div>
-          <div className="rounded-[1.5rem] border border-white/60 bg-white/58 p-4">
-            <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--foreground-soft)]">Sizes</p>
-            <p className="mt-2 text-lg text-[var(--deep-black)]">
-              {product.variants?.length
-                ? product.variants.map((variant) => variant.size).join(', ')
-                : 'Standard'}
-            </p>
-          </div>
+          {product.features && product.features.length > 0 ? (
+            product.features.slice(0, 3).map((feature, idx) => (
+              <div key={idx} className="rounded-[1.5rem] border border-white/60 bg-white/58 p-4">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--foreground-soft)]">Feature</p>
+                <p className="mt-2 text-lg text-[var(--deep-black)]">{feature}</p>
+              </div>
+            ))
+          ) : (
+            <>
+              <div className="rounded-[1.5rem] border border-white/60 bg-white/58 p-4">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--foreground-soft)]">Type</p>
+                <p className="mt-2 text-lg text-[var(--deep-black)]">
+                  {typeof product.categoryId === 'object' && product.categoryId?.name
+                    ? product.categoryId.name
+                    : 'Premium Fragrance'}
+                </p>
+              </div>
+              <div className="rounded-[1.5rem] border border-white/60 bg-white/58 p-4">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--foreground-soft)]">Sizes</p>
+                <p className="mt-2 text-lg text-[var(--deep-black)]">
+                  {product.variants?.length
+                    ? product.variants.map((variant) => variant.size).join(', ')
+                    : 'Standard'}
+                </p>
+              </div>
+              <div className="rounded-[1.5rem] border border-white/60 bg-white/58 p-4">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--foreground-soft)]">Availability</p>
+                <p className="mt-2 text-lg text-[var(--deep-black)]">
+                  {(product as { stock?: number }).stock && (product as { stock?: number }).stock! > 0
+                    ? 'In Stock'
+                    : 'Sold Out'}
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

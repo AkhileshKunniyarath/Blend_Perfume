@@ -47,7 +47,9 @@ export default function ProductCard({ product, priority = 'default' }: ProductCa
     >
       <div className="absolute inset-x-4 top-4 z-10 flex items-center justify-between">
         <span className="rounded-full border border-white/60 bg-white/72 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--foreground-soft)] backdrop-blur">
-          Eau de parfum
+          {typeof product.categoryId === 'object' && product.categoryId?.name
+            ? product.categoryId.name
+            : 'Blend Perfume'}
         </span>
         <button
           type="button"

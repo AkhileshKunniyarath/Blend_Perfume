@@ -58,6 +58,7 @@ export default function ProductsAdmin() {
   const [showForm, setShowForm] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -169,6 +170,7 @@ export default function ProductsAdmin() {
       features: product.features || [],
     });
     setEditingId(product._id);
+    setEditingSlug(product.slug);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -203,7 +205,7 @@ export default function ProductsAdmin() {
       };
 
       const method = editingId ? 'PUT' : 'POST';
-      const url = editingId ? `/api/products/${formData.slug}` : '/api/products';
+      const url = editingId ? `/api/products/${editingSlug}` : '/api/products';
 
       const res = await fetch(url, {
         method,
@@ -214,6 +216,7 @@ export default function ProductsAdmin() {
       if (res.ok) {
         setShowForm(false);
         setEditingId(null);
+        setEditingSlug(null);
         setFormData(initialFormState);
         void fetchProducts();
       } else {
@@ -278,6 +281,7 @@ export default function ProductsAdmin() {
             if (showForm) {
               setShowForm(false);
               setEditingId(null);
+              setEditingSlug(null);
               setFormData(initialFormState);
             } else {
               setShowForm(true);
@@ -564,6 +568,7 @@ export default function ProductsAdmin() {
                 onClick={() => {
                   setShowForm(false);
                   setEditingId(null);
+                  setEditingSlug(null);
                   setFormData(initialFormState);
                 }} 
                 className="px-6 py-2 rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"

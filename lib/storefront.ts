@@ -24,7 +24,8 @@ export type StorefrontProduct = {
   images?: string[];
   stock: number;
   variants?: ProductVariant[];
-  categoryId?: StorefrontCategory | string;
+  features?: string[];
+  categoryId?: { _id?: string; name?: string; slug?: string } | string;
 };
 
 export const PRODUCT_IMAGE_PLACEHOLDER = '/no-image-placeholder.svg';

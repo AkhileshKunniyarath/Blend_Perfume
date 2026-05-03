@@ -106,30 +106,21 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
 
-        <div className="luxury-panel rounded-[2rem] p-7 sm:p-8">
-          <p className="text-xs uppercase tracking-[0.36em] text-[var(--accent-strong)]">Wear Profile</p>
-          <h2 className="mt-4 text-3xl text-[var(--deep-black)] sm:text-4xl">What to expect</h2>
-          <div className="mt-6 space-y-4">
-            <div className="rounded-[1.5rem] border border-white/60 bg-white/60 p-5">
-              <p className="text-sm leading-7 text-[var(--foreground)]">
-                “A polished fragrance experience that feels more expensive than its price point.”
-              </p>
-              <p className="mt-3 text-xs uppercase tracking-[0.24em] text-[var(--foreground-soft)]">Editorial note</p>
-            </div>
-            <div className="rounded-[1.5rem] border border-white/60 bg-white/60 p-5">
-              <p className="text-sm leading-7 text-[var(--foreground)]">
-                “Ideal for gifting, layering, and building a signature scent wardrobe.”
-              </p>
-              <p className="mt-3 text-xs uppercase tracking-[0.24em] text-[var(--foreground-soft)]">Brand promise</p>
-            </div>
-            <div className="rounded-[1.5rem] border border-white/60 bg-white/60 p-5">
-              <p className="text-sm leading-7 text-[var(--foreground)]">
-                “Long-lasting wear with a smooth dry down that stays elegant rather than overpowering.”
-              </p>
-              <p className="mt-3 text-xs uppercase tracking-[0.24em] text-[var(--foreground-soft)]">Wear experience</p>
+        {serializedProduct.features && serializedProduct.features.length > 3 && (
+          <div className="luxury-panel rounded-[2rem] p-7 sm:p-8">
+            <p className="text-xs uppercase tracking-[0.36em] text-[var(--accent-strong)]">More Details</p>
+            <h2 className="mt-4 text-3xl text-[var(--deep-black)] sm:text-4xl">What to expect</h2>
+            <div className="mt-6 space-y-4">
+              {serializedProduct.features.slice(3).map((feature: string, idx: number) => (
+                <div key={idx} className="rounded-[1.5rem] border border-white/60 bg-white/60 p-5">
+                  <p className="text-sm leading-7 text-[var(--foreground)]">
+                    {feature}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {relatedProducts.length > 0 && (
