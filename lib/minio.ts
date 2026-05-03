@@ -116,7 +116,21 @@ export async function ensureBucketExists() {
   }
 }
 
+export function getMinioProxyUrl(objectName: string, bucketName = MINIO_BUCKET_NAME) {
+  const encodedSegments = objectName
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+
+  return `/api/media/${encodeURIComponent(bucketName)}/${encodedSegments}`;
+}
+
 export function getMinioObjectUrl(objectName: string) {
+  return getMinioProxyUrl(objectName);
+}
+
+export function getMinioPublicObjectUrl(objectName: string) {
   return new URL(
     `${encodeURIComponent(MINIO_BUCKET_NAME)}/${encodeURIComponent(objectName)}`,
     `${MINIO_BASE_URL}/`

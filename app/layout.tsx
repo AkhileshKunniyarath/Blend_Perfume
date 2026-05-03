@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 import { GoogleAnalytics, GoogleTagManager } from '@next/third-parties/google';
+import { Poppins } from 'next/font/google';
 import "./globals.css";
+
+const poppins = Poppins({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-poppins',
+});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
@@ -28,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full scroll-smooth antialiased">
+    <html lang="en" className={`h-full scroll-smooth antialiased ${poppins.variable}`} data-scroll-behavior="smooth">
       {process.env.NEXT_PUBLIC_GTM_ID && <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID} />}
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
         {children}

@@ -129,7 +129,7 @@ export default function ProductSlider({ id, title, subtitle, products }: Product
           <div
             key={product._id}
             data-slider-card
-            className="min-w-[78vw] max-w-[78vw] snap-start sm:min-w-[21rem] sm:max-w-[21rem]"
+            className="min-w-[78vw] max-w-[78vw] shrink-0 snap-start sm:min-w-[calc(50%-10px)] sm:max-w-[calc(50%-10px)] lg:min-w-[calc(25%-15px)] lg:max-w-[calc(25%-15px)]"
           >
             <ProductCard product={product} priority={index === 0 ? 'featured' : 'default'} />
           </div>

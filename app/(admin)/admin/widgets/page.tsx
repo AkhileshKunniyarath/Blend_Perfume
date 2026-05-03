@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
+  ArrowDown,
+  ArrowUp,
   GripVertical,
   ImagePlus,
   Loader2,
@@ -14,7 +16,10 @@ import {
 } from 'lucide-react';
 import {
   WIDGET_LIBRARY,
+  getDefaultHeroSlide,
   getDefaultWidgetData,
+  getHeroSlides,
+  type HeroSlide,
   type WidgetData,
   type WidgetType,
 } from '@/lib/widgets';
@@ -38,6 +43,19 @@ type WidgetDraft = {
   isActive: boolean;
 };
 
+function createHeroSlideDraft(): HeroSlide {
+  const defaultSlide = getDefaultHeroSlide();
+
+  return {
+    ...defaultSlide,
+    imageUrl: '',
+    mobileImageUrl: '',
+    heading: '',
+    subtitle: '',
+    eyebrow: '',
+  };
+}
+
 function createDraft(type: WidgetType = 'HERO_BANNER'): WidgetDraft {
   return {
     type,
@@ -55,6 +73,25 @@ function normalizeWidget(widget: {
   data?: WidgetData;
   isActive?: boolean;
 }): WidgetDraft {
+  if (widget.type === 'HERO_BANNER') {
+    const heroData = widget.data || {};
+    const normalizedSlides = getHeroSlides(heroData, widget.title).map((slide) => ({
+      ...getDefaultHeroSlide(),
+      ...slide,
+    }));
+
+    return {
+      _id: widget._id,
+      type: widget.type,
+      title: widget.title || '',
+      data: {
+        ...heroData,
+        slides: normalizedSlides,
+      },
+      isActive: widget.isActive ?? true,
+    };
+  }
+
   return {
     _id: widget._id,
     type: widget.type,
@@ -204,9 +241,52 @@ export default function WidgetsAdmin() {
     });
   }
 
-  async function uploadImage(file: File, field: 'imageUrl' | 'mobileImageUrl') {
+  function updateHeroSlide<K extends keyof HeroSlide>(index: number, key: K, value: HeroSlide[K]) {
+    const slides = [...(draft.data.slides || [])];
+    slides[index] = {
+      ...(slides[index] || {}),
+      [key]: value,
+    };
+    updateData({ slides });
+  }
+
+  function addHeroSlide() {
+    updateData({
+      slides: [
+        ...(draft.data.slides || []),
+        createHeroSlideDraft(),
+      ],
+    });
+  }
+
+  function removeHeroSlide(index: number) {
+    updateData({
+      slides: (draft.data.slides || []).filter((_, itemIndex) => itemIndex !== index),
+    });
+  }
+
+  function moveHeroSlide(index: number, direction: 'up' | 'down') {
+    const slides = [...heroSlides];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+    if (targetIndex < 0 || targetIndex >= slides.length) {
+      return;
+    }
+
+    const [movedSlide] = slides.splice(index, 1);
+    slides.splice(targetIndex, 0, movedSlide);
+    updateData({ slides });
+  }
+
+  async function uploadImage(
+    file: File,
+    field: 'imageUrl' | 'mobileImageUrl',
+    options?: { slideIndex?: number; uploadKey?: string }
+  ) {
+    const activeUploadKey = options?.uploadKey ?? field;
+
     try {
-      setUploadingField(field);
+      setUploadingField(activeUploadKey);
       const formData = new FormData();
       formData.append('file', file);
 
@@ -234,12 +314,17 @@ export default function WidgetsAdmin() {
       }
 
       const payload = await res.json();
-      updateData({ [field]: payload.url } as Partial<WidgetData>);
+
+      if (options?.slideIndex !== undefined) {
+        updateHeroSlide(options.slideIndex, field, payload.url);
+      } else {
+        updateData({ [field]: payload.url } as Partial<WidgetData>);
+      }
     } catch (error) {
       console.error('Error uploading image:', error);
       window.alert('Image upload failed. Please try again.');
     } finally {
-      setUploadingField(null);
+      setUploadingField((current) => (current === activeUploadKey ? null : current));
     }
   }
 
@@ -342,6 +427,8 @@ export default function WidgetsAdmin() {
 
   const productSelectorsVisible =
     draft.type === 'HORIZONTAL_PRODUCT' || draft.type === 'VERTICAL_PRODUCT_GRID';
+  const isHeroBanner = draft.type === 'HERO_BANNER';
+  const heroSlides = isHeroBanner ? getHeroSlides(draft.data, draft.title) : [];
   const isBanner =
     draft.type === 'HERO_BANNER' || draft.type === 'FULL_BANNER' || draft.type === 'HALF_BANNER';
 
@@ -409,60 +496,70 @@ export default function WidgetsAdmin() {
                   No sections yet. Add your hero to start building the page.
                 </div>
               ) : (
-                widgets.map((widget) => (
-                  <button
-                    key={widget._id ?? widget.type}
-                    type="button"
-                    draggable
-                    onDragStart={() => setDraggingId(widget._id ?? null)}
-                    onDragEnd={() => setDraggingId(null)}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => {
-                      if (widget._id) {
-                        void dropOnWidget(widget._id);
-                      }
-                    }}
-                    onClick={() => selectWidget(widget)}
-                    className={cn(
-                      'flex w-full items-start gap-4 rounded-[1.6rem] border px-4 py-4 text-left',
-                      draft._id === widget._id
-                        ? 'border-[var(--deep-black)] bg-[var(--deep-black)] text-white'
-                        : 'border-white/60 bg-white/62 text-[var(--deep-black)] hover:border-[var(--accent)]'
-                    )}
-                  >
-                    <span className={cn('mt-0.5', draft._id === widget._id ? 'text-white/70' : 'text-[var(--foreground-soft)]')}>
-                      <GripVertical className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={cn(
-                            'rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.26em]',
-                            draft._id === widget._id ? 'bg-white/12 text-white/80' : 'bg-[var(--background-strong)] text-[var(--foreground-soft)]'
-                          )}
-                        >
-                          {widgetLabel(widget.type)}
-                        </span>
-                        {!widget.isActive && (
+                widgets.map((widget) => {
+                  const widgetHeroSlide = widget.type === 'HERO_BANNER'
+                    ? getHeroSlides(widget.data, widget.title)[0]
+                    : null;
+                  const widgetHeading = widget.title || widgetHeroSlide?.heading || widgetLabel(widget.type);
+                  const widgetSummary = widget.type === 'HERO_BANNER'
+                    ? widgetHeroSlide?.subtitle || widgetHeroSlide?.eyebrow || 'No supporting copy yet.'
+                    : widget.data.subtitle || widget.data.eyebrow || 'No supporting copy yet.';
+
+                  return (
+                    <button
+                      key={widget._id ?? widget.type}
+                      type="button"
+                      draggable
+                      onDragStart={() => setDraggingId(widget._id ?? null)}
+                      onDragEnd={() => setDraggingId(null)}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => {
+                        if (widget._id) {
+                          void dropOnWidget(widget._id);
+                        }
+                      }}
+                      onClick={() => selectWidget(widget)}
+                      className={cn(
+                        'flex w-full items-start gap-4 rounded-[1.6rem] border px-4 py-4 text-left',
+                        draft._id === widget._id
+                          ? 'border-[var(--deep-black)] bg-[var(--deep-black)] text-white'
+                          : 'border-white/60 bg-white/62 text-[var(--deep-black)] hover:border-[var(--accent)]'
+                      )}
+                    >
+                      <span className={cn('mt-0.5', draft._id === widget._id ? 'text-white/70' : 'text-[var(--foreground-soft)]')}>
+                        <GripVertical className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={cn(
                               'rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.26em]',
-                              draft._id === widget._id ? 'bg-white/12 text-white/80' : 'bg-red-50 text-red-700'
+                              draft._id === widget._id ? 'bg-white/12 text-white/80' : 'bg-[var(--background-strong)] text-[var(--foreground-soft)]'
                             )}
                           >
-                            Hidden
+                            {widgetLabel(widget.type)}
                           </span>
-                        )}
+                          {!widget.isActive && (
+                            <span
+                              className={cn(
+                                'rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.26em]',
+                                draft._id === widget._id ? 'bg-white/12 text-white/80' : 'bg-red-50 text-red-700'
+                              )}
+                            >
+                              Hidden
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-3 text-base font-semibold">
+                          {widgetHeading}
+                        </p>
+                        <p className={cn('mt-1 text-sm', draft._id === widget._id ? 'text-white/72' : 'text-[var(--foreground-soft)]')}>
+                          {widgetSummary}
+                        </p>
                       </div>
-                      <p className="mt-3 text-base font-semibold">
-                        {widget.title || widgetLabel(widget.type)}
-                      </p>
-                      <p className={cn('mt-1 text-sm', draft._id === widget._id ? 'text-white/72' : 'text-[var(--foreground-soft)]')}>
-                        {widget.data.subtitle || widget.data.eyebrow || 'No supporting copy yet.'}
-                      </p>
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>
@@ -518,22 +615,14 @@ export default function WidgetsAdmin() {
             </label>
 
             <label className="space-y-2">
-              <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Section Title</span>
+              <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">
+                {isHeroBanner ? 'Internal Label' : 'Section Title'}
+              </span>
               <input
                 value={draft.title}
                 onChange={(event) => updateDraft('title', event.target.value)}
                 className="w-full rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
-                placeholder="e.g. Best Sellers"
-              />
-            </label>
-
-            <label className="space-y-2">
-              <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Eyebrow</span>
-              <input
-                value={draft.data.eyebrow || ''}
-                onChange={(event) => updateData({ eyebrow: event.target.value })}
-                className="w-full rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
-                placeholder="Blend Perfume"
+                placeholder={isHeroBanner ? 'Optional admin label' : 'e.g. Best Sellers'}
               />
             </label>
 
@@ -553,19 +642,33 @@ export default function WidgetsAdmin() {
               </button>
             </label>
 
-            <label className="space-y-2 md:col-span-2">
-              <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Supporting Copy</span>
-              <textarea
-                rows={4}
-                value={draft.data.subtitle || ''}
-                onChange={(event) => updateData({ subtitle: event.target.value })}
-                className="w-full rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
-                placeholder="Perfume storytelling, campaign copy, or section context..."
-              />
-            </label>
+            {!isHeroBanner && (
+              <label className="space-y-2">
+                <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Eyebrow</span>
+                <input
+                  value={draft.data.eyebrow || ''}
+                  onChange={(event) => updateData({ eyebrow: event.target.value })}
+                  className="w-full rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
+                  placeholder="Blend Perfume"
+                />
+              </label>
+            )}
+
+            {!isHeroBanner && (
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Supporting Copy</span>
+                <textarea
+                  rows={4}
+                  value={draft.data.subtitle || ''}
+                  onChange={(event) => updateData({ subtitle: event.target.value })}
+                  className="w-full rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
+                  placeholder="Perfume storytelling, campaign copy, or section context..."
+                />
+              </label>
+            )}
           </div>
 
-          {isBanner && (
+          {isBanner && draft.type !== 'HERO_BANNER' && (
             <div className="mt-7 grid gap-5 md:grid-cols-2">
               <label className="space-y-2 md:col-span-2">
                 <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Image URL</span>
@@ -605,7 +708,7 @@ export default function WidgetsAdmin() {
                 </label>
               </label>
 
-              {(draft.type === 'HERO_BANNER' || draft.type === 'FULL_BANNER') && (
+              {draft.type === 'FULL_BANNER' && (
                 <>
                   <label className="space-y-2">
                     <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">CTA Label</span>
@@ -627,7 +730,7 @@ export default function WidgetsAdmin() {
                 </>
               )}
 
-              {(draft.type === 'HERO_BANNER' || draft.type === 'FULL_BANNER') && (
+              {draft.type === 'FULL_BANNER' && (
                 <>
                   <label className="space-y-2">
                     <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Content Alignment</span>
@@ -694,6 +797,235 @@ export default function WidgetsAdmin() {
                   </label>
                 </>
               )}
+            </div>
+          )}
+
+          {isHeroBanner && (
+            <div className="mt-7 space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm uppercase tracking-[0.2em] text-[var(--foreground-soft)]">Hero Slides</h3>
+                  <p className="mt-1 text-sm text-[var(--foreground-soft)]">Add multiple images to create an auto-sliding hero section.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addHeroSlide}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm hover:border-[var(--accent)]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Slide
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {heroSlides.map((slide, index) => (
+                  <div key={index} className="relative rounded-[1.5rem] border border-[var(--border)] bg-white/40 p-5 pt-8">
+                    <div className="mb-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--accent-strong)] text-xs text-white">
+                          {index + 1}
+                        </div>
+                        <span className="text-sm font-semibold text-[var(--deep-black)]">Slide Configuration</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => moveHeroSlide(index, 'up')}
+                          disabled={index === 0}
+                          className="rounded-full border border-[var(--border)] bg-white p-2 text-[var(--foreground-soft)] hover:border-[var(--accent)] hover:text-[var(--deep-black)] disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label={`Move slide ${index + 1} up`}
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveHeroSlide(index, 'down')}
+                          disabled={index === heroSlides.length - 1}
+                          className="rounded-full border border-[var(--border)] bg-white p-2 text-[var(--foreground-soft)] hover:border-[var(--accent)] hover:text-[var(--deep-black)] disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label={`Move slide ${index + 1} down`}
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeHeroSlide(index)}
+                          className="rounded-full border border-[var(--border)] bg-white p-2 text-[var(--foreground-soft)] hover:border-red-200 hover:text-red-500"
+                          aria-label={`Remove slide ${index + 1}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-5 md:grid-cols-2">
+                      <label className="space-y-2 md:col-span-2">
+                        <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Desktop Image URL</span>
+                        <div className="flex items-center gap-3">
+                          <input
+                            value={slide.imageUrl || ''}
+                            onChange={(event) => updateHeroSlide(index, 'imageUrl', event.target.value)}
+                            className="flex-1 rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
+                            placeholder="https://..."
+                          />
+                          <label className="flex h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[1rem] border border-dashed border-[var(--border)] bg-white/60 px-4 text-sm hover:border-[var(--accent)]">
+                            {uploadingField === `imageUrl-${index}` ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <ImagePlus className="h-4 w-4" />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (file) {
+                                  void uploadImage(file, 'imageUrl', {
+                                    slideIndex: index,
+                                    uploadKey: `imageUrl-${index}`,
+                                  });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </label>
+
+                      {slide.imageUrl && (
+                        <div className="overflow-hidden rounded-[1.25rem] border border-white/55 bg-white/55 p-3 md:col-span-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={slide.imageUrl}
+                            alt={slide.heading || `Hero slide ${index + 1} desktop preview`}
+                            className="h-52 w-full rounded-[1rem] object-cover"
+                          />
+                        </div>
+                      )}
+
+                      <label className="space-y-2 md:col-span-2">
+                        <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Mobile Image URL</span>
+                        <div className="flex items-center gap-3">
+                          <input
+                            value={slide.mobileImageUrl || ''}
+                            onChange={(event) => updateHeroSlide(index, 'mobileImageUrl', event.target.value)}
+                            className="flex-1 rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
+                            placeholder="https://..."
+                          />
+                          <label className="flex h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[1rem] border border-dashed border-[var(--border)] bg-white/60 px-4 text-sm hover:border-[var(--accent)]">
+                            {uploadingField === `mobileImageUrl-${index}` ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <ImagePlus className="h-4 w-4" />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (file) {
+                                  void uploadImage(file, 'mobileImageUrl', {
+                                    slideIndex: index,
+                                    uploadKey: `mobileImageUrl-${index}`,
+                                  });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </label>
+
+                      {slide.mobileImageUrl && (
+                        <div className="overflow-hidden rounded-[1.25rem] border border-white/55 bg-white/55 p-3 md:col-span-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={slide.mobileImageUrl}
+                            alt={slide.heading || `Hero slide ${index + 1} mobile preview`}
+                            className="mx-auto h-56 w-auto max-w-full rounded-[1rem] object-cover"
+                          />
+                        </div>
+                      )}
+
+                      <label className="space-y-2">
+                        <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Heading</span>
+                        <input
+                          value={slide.heading || ''}
+                          onChange={(event) => updateHeroSlide(index, 'heading', event.target.value)}
+                          className="w-full rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
+                          placeholder="Craft Your Signature Scent"
+                        />
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Eyebrow</span>
+                        <input
+                          value={slide.eyebrow || ''}
+                          onChange={(event) => updateHeroSlide(index, 'eyebrow', event.target.value)}
+                          className="w-full rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
+                          placeholder="Blend Perfume"
+                        />
+                      </label>
+
+                      <label className="space-y-2 md:col-span-2">
+                        <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Subtitle</span>
+                        <input
+                          value={slide.subtitle || ''}
+                          onChange={(event) => updateHeroSlide(index, 'subtitle', event.target.value)}
+                          className="w-full rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
+                        />
+                      </label>
+
+                      <label className="space-y-2">
+                        <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">CTA Label</span>
+                        <input
+                          value={slide.buttonText || ''}
+                          onChange={(event) => updateHeroSlide(index, 'buttonText', event.target.value)}
+                          className="w-full rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
+                        />
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">CTA Link</span>
+                        <input
+                          value={slide.link || ''}
+                          onChange={(event) => updateHeroSlide(index, 'link', event.target.value)}
+                          className="w-full rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
+                        />
+                      </label>
+
+                      <label className="space-y-2">
+                        <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Content Alignment</span>
+                        <select
+                          value={slide.alignment || 'left'}
+                          onChange={(event) =>
+                            updateHeroSlide(index, 'alignment', event.target.value as HeroSlide['alignment'])
+                          }
+                          className="w-full rounded-[1rem] border border-[var(--border)] bg-white/78 px-4 py-3 outline-none focus:border-[var(--accent)]"
+                        >
+                          <option value="left">Left</option>
+                          <option value="center">Center</option>
+                          <option value="right">Right</option>
+                        </select>
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-xs uppercase tracking-[0.26em] text-[var(--foreground-soft)]">Overlay Opacity</span>
+                        <input
+                          type="range"
+                          min={18}
+                          max={72}
+                          value={slide.overlayOpacity || 36}
+                          onChange={(event) => updateHeroSlide(index, 'overlayOpacity', Number(event.target.value))}
+                          className="mt-4 w-full accent-[var(--accent-strong)]"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+
+                {heroSlides.length === 0 && (
+                  <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] bg-white/45 px-4 py-10 text-center text-sm text-[var(--foreground-soft)]">
+                    No slides added yet. Click &quot;Add Slide&quot; to start.
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

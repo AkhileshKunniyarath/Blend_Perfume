@@ -17,6 +17,20 @@ export type TestimonialItem = {
   role?: string;
 };
 
+export type HeroSlide = {
+  imageUrl?: string;
+  mobileImageUrl?: string;
+  heading?: string;
+  subtitle?: string;
+  eyebrow?: string;
+  buttonText?: string;
+  link?: string;
+  alignment?: 'left' | 'center' | 'right';
+  overlayOpacity?: number;
+};
+
+export const HERO_BANNER_AUTOPLAY_MS = 5000;
+
 export type WidgetData = {
   imageUrl?: string;
   mobileImageUrl?: string;
@@ -33,6 +47,7 @@ export type WidgetData = {
   points?: string[];
   reverse?: boolean;
   testimonials?: TestimonialItem[];
+  slides?: HeroSlide[];
 };
 
 export type WidgetRecord = {
@@ -91,16 +106,60 @@ export const WIDGET_LIBRARY: Array<{
   },
 ];
 
+export function getDefaultHeroSlide(): HeroSlide {
+  return {
+    eyebrow: 'Blend Perfume',
+    heading: 'Craft Your Signature Scent',
+    subtitle: 'Craft your signature scent with long-lasting oils and modern perfume rituals.',
+    buttonText: 'Shop Now',
+    link: '/#best-sellers',
+    alignment: 'left',
+    overlayOpacity: 42,
+  };
+}
+
+export function getHeroSlides(data: WidgetData, fallbackTitle?: string): HeroSlide[] {
+  if (Array.isArray(data.slides)) {
+    return data.slides;
+  }
+
+  const hasLegacyHeroData = [
+    data.imageUrl,
+    data.mobileImageUrl,
+    fallbackTitle,
+    data.subtitle,
+    data.eyebrow,
+    data.buttonText,
+    data.link,
+    data.alignment,
+    data.overlayOpacity,
+  ].some((value) => value !== undefined && value !== '');
+
+  if (!hasLegacyHeroData) {
+    return [getDefaultHeroSlide()];
+  }
+
+  return [
+    {
+      ...getDefaultHeroSlide(),
+      imageUrl: data.imageUrl,
+      mobileImageUrl: data.mobileImageUrl,
+      heading: fallbackTitle || getDefaultHeroSlide().heading,
+      subtitle: data.subtitle || getDefaultHeroSlide().subtitle,
+      eyebrow: data.eyebrow || getDefaultHeroSlide().eyebrow,
+      buttonText: data.buttonText || getDefaultHeroSlide().buttonText,
+      link: data.link || getDefaultHeroSlide().link,
+      alignment: data.alignment || getDefaultHeroSlide().alignment,
+      overlayOpacity: data.overlayOpacity ?? getDefaultHeroSlide().overlayOpacity,
+    },
+  ];
+}
+
 export function getDefaultWidgetData(type: WidgetType): WidgetData {
   switch (type) {
     case 'HERO_BANNER':
       return {
-        eyebrow: 'Blend Perfume',
-        subtitle: 'Craft your signature scent with long-lasting oils and modern perfume rituals.',
-        buttonText: 'Shop Now',
-        link: '/#best-sellers',
-        alignment: 'left',
-        overlayOpacity: 42,
+        slides: [getDefaultHeroSlide()],
       };
     case 'CATEGORY_GRID':
       return {
