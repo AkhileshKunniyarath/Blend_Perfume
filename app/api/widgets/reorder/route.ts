@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import Widget from '@/models/Widget';
 
@@ -18,9 +19,12 @@ export async function POST(req: Request) {
 
     await Promise.all(updates);
 
+    revalidatePath('/');
+
     return NextResponse.json({ success: true, message: 'Widgets reordered successfully' });
   } catch (error) {
     console.error('Error reordering widgets:', error);
     return NextResponse.json({ error: 'Failed to reorder widgets' }, { status: 500 });
   }
 }
+

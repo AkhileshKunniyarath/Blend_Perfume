@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import Category from '@/models/Category';
 
@@ -18,6 +19,11 @@ export async function POST(req: Request) {
     await connectToDatabase();
     const body = await req.json();
     const category = await Category.create(body);
+
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/category/[slug]', 'page');
+
     return NextResponse.json(category, { status: 201 });
   } catch (error: unknown) {
     console.error('Error creating category:', error);
@@ -27,3 +33,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
   }
 }
+

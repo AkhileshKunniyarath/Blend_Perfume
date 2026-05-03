@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import Product from '@/models/Product';
 
@@ -23,6 +24,13 @@ export async function POST(req: Request) {
     await connectToDatabase();
     const body = await req.json();
     const product = await Product.create(body);
+
+    // Invalidate storefront pages so the new product appears immediately
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/category/[slug]', 'page');
+    revalidatePath('/sitemap.xml');
+
     return NextResponse.json(product, { status: 201 });
   } catch (error: unknown) {
     console.error('Error creating product:', error);

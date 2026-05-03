@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import Product from '@/models/Product';
 
@@ -58,6 +59,12 @@ export async function PUT(req: Request) {
         await Product.updateOne({ _id: productId }, { $set: { stock: totalStock } });
       }
     }
+
+    // Invalidate storefront pages so updated stock is reflected
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/product/[slug]', 'page');
+    revalidatePath('/category/[slug]', 'page');
 
     return NextResponse.json({ success: true, updated: results.length });
   } catch (error) {

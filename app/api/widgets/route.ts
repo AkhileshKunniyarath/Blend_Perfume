@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import Widget from '@/models/Widget';
 
@@ -28,9 +29,13 @@ export async function POST(req: Request) {
     const position = lastWidget ? lastWidget.position + 1 : 0;
 
     const widget = await Widget.create({ ...body, position });
+
+    revalidatePath('/');
+
     return NextResponse.json(widget, { status: 201 });
   } catch (error) {
     console.error('Error creating widget:', error);
     return NextResponse.json({ error: 'Failed to create widget' }, { status: 500 });
   }
 }
+
